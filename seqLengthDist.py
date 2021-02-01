@@ -1,65 +1,80 @@
 #!/usr/bin/python
 # Jun-Hoe, Lee (2020)
-# moidified from countGCperGenome.py to output more basic stats for a fasta file
-# stats are numbe of seqs, average seq Length, longestSeq, shortestSeq, Gc%
-# Usage: python countGCperGenome.py [input fasta file] [make output file]
+# moidified from statsFasta.py to generate a basic seq length frequency histogram
+# 1. get a distribution count of sequence length
+# 2. generate a histogram of length distribution
+# Usage: python  [input fasta file] [make output file]
 
 import sys
 import os
+import argparse
 from Bio.SeqUtils import GC
 from Bio import SeqIO
 import numpy as np
 
+from matplotlib import pyplot as plt
 
-##################################3
+######################################################
+class errorDisplayParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+# parser for input files and optional arguments
+parser = errorDisplayParser(description='seqLengthDist: Get distribution of seq lengths in a \
+                                         fasta file, then create a histogram')
+parser.add_argument('inputSeqFile', action='store',
+                     help='input fasta file, preferably in single line format')
+parser.add_argument('outputHistFile', action='store',
+                     help='output png file of histogram')
+parser.add_argument('-bins', type=int, default=20,
+                     help='number of bins, default=20. Usage: -bin 20')
+parser.add_argument('-verbose', action='store_true', default=False,
+                     help='turns on verbose mode. Usage: -verbose')  # verbose flag
+
+args = parser.parse_args()
+
 # function to turn on verbose mode
-verbose = False
-if verbose:  # function turned on if verbose called
+if args.verbose:  # function turned on if verbose called
     def verboseprint(arg, *args):  # *args to output any/all given arguments
         print("-v ", arg, ":", args)
 else:
     verboseprint = lambda *a: None  # do-nothing function
 
 ####################################
+def roundUp(x): # round up to next 100
+    return x if x % 100 == 0 else x + 100 - x % 100
 
 
-# A. get input file
+####################################
+# A. read input file, get seq length distribution
 
 try:
-    fasta_file = sys.argv[1]
-    verboseprint("fasta_file", fasta_file)
+    seqs = [seq for seq in SeqIO.parse(args.inputSeqFile, "fasta")]
 except:
-    print("Incorrect input parameters")
-    print("python countGCperGenome.py [input fasta file] [yes/no make output file]")
+    print("Incorrect input file")
     sys.exit(1)
 
-
-seqs = [seq for seq in SeqIO.parse(fasta_file, "fasta")]
-
 lengths_list = [len(i.seq) for i in seqs]
-# number of seqs
-numSeqs = len(lengths_list)
-# get average length
-avgSeqLength = np.average(lengths_list)
-# get longest and shortest seq
-maxSeqLength = max(lengths_list)
-minSeqLength = min(lengths_list)
-## calculate GC%
-gc_percent = np.average([GC(i.seq) for i in seqs])
+if args.verbose:
+    print("lengths_list :5 ", lengths_list[:5])
 
-# total sequnce length (not used for now)
-total_size = np.sum(lengths_list)
+######################################
+# B. generate histogram
 
-print("fasta_file\tNumSeqs\tAvgSeqLength\tMaxSeqLength\tMinSeqLength\tGC_percent")
-writeLine = "%s\t%d\t%0.2f\t%d\t%d\t%0.2f\n" % \
-            (fasta_file, numSeqs, avgSeqLength, maxSeqLength, minSeqLength, gc_percent)
-print(writeLine)
+# binsNum = np.linspace(math.ceil(min(lengths_list)),
+#                    math.floor(max(lengths_list)),
+#                    args.bins) # number of bins
 
-# check whether to create output file
-if len(sys.argv) >  2:
-    getInputFileName = os.path.basename(fasta_file)
-    outputFileName = "out_" + getInputFileName
-    verboseprint("make outputFileName", outputFileName)
-    with open(outputFileName, 'w') as outputFile:
-        outputFile.write(writeLine)
-    outputFile.close()
+plt.xlim([min(lengths_list)-5, max(lengths_list)+5])
+
+plt.hist(lengths_list, bins=args.bins, alpha=0.5, edgecolor='black')
+plt.xticks(np.arange(100 - roundUp(min(lengths_list)),
+           roundUp(max(lengths_list)), 50))
+
+plt.title('Distribution of sequence lengths')
+plt.xlabel('Sequence length (bp)')
+plt.ylabel('Number of sequences')
+
+plt.savefig(args.outputHistFile)
