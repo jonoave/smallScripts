@@ -4,7 +4,7 @@
 # input: i.tsv of old names and new names
 # ii. location to start renaming
 # usage:
-# python renameFilesRecursive.py [list_filenNames] [working directory] -verbose
+# python renameFilesRecursive.py [list_filenNames] [full_path to directory] -verbose
 # WARNING! Make backup before executing script to rename!
 
 
@@ -26,7 +26,7 @@ class errorDisplayParser(argparse.ArgumentParser):
 parser = errorDisplayParser(description='Renames all files recursively in a directory based on a list of old/new names \
                                          WARNING! Make backup before executing script!')
 parser.add_argument('inputFileNames', action="store", type=argparse.FileType('r'),
-                     help='tsv of old and new file names')
+                     help='tsv file: QBIC_barcodes\'\t\'Old_names')
 parser.add_argument('dirPath', action='store',
                      help='path to directory')
 parser.add_argument('-verbose', action='store_true', default=False,
@@ -70,26 +70,25 @@ except:
 for dirs in dir_list:
     if dirs in qbicRename_dict:
         verboseprint(" dirs in qbicRename_dict ", dirs)
-        currentPath = pathlib.Path().resolve()
-        fullpath = os.path.join(currentPath , dirs)
+
+        # currentPath = pathlib.Path().resolve()
+        #fullpath = os.path.join(currentPath , dirs)
+        fullpath = os.path.join(os.path.abspath(args.dirPath), dirs)
         verboseprint("fullpath ", fullpath)
         qbicBarcode = qbicRename_dict.get(dirs)
         for subdirs, subSubdirs, files in os.walk(fullpath):
             verboseprint("subdirs in os.walk(dirs)" , subdirs)
             # second layer, e.g. fastq/xxx_R1.fastqz
-            #qbicBarcode = qbicRename_dict.get(dirs)
             for fileName in files:
                 verboseprint('fileName', fileName)
                 if fileName.find(dirs) >= 0: # find substring of dirs in filename, if not found it will be -1
                     print('found dirs in filename')
-                    subdirectoryPath = os.path.relpath(subdirs, dirs) #get the path to your subdirectory
+                    subdirectoryPath = os.path.relpath(subdirs)
                     verboseprint("subdirectoryPath ", subdirectoryPath)
-#                    filePath = os.path.join(subdirectoryPath, fileName) #get the path to your file
-                    oldFilePath = os.path.join(fullpath, subdirectoryPath, fileName)
+                    oldFilePath = os.path.join(subdirectoryPath, fileName)
                     verboseprint("oldFilePath",oldFilePath)
                     newFileName = fileName.replace(dirs, qbicBarcode) #create the new name
-                    newFilePath = os.path.join(fullpath, subdirectoryPath, newFileName)
-                    # get path of old and new file names
+                    newFilePath = os.path.join(subdirectoryPath, newFileName)
                     os.rename(oldFilePath, newFilePath) #rename the file
 
         # now rename the subdirs
