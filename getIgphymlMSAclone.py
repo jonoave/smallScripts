@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # Jun-Hoe, Lee (2020)
-# script to parse the output of IgPhyml for multiple sequence alignment of a clone group
-# i. germline sequence from xxx_igphyml-pass_hlp_asr.fasta
-# ii. clone sequences from xxx_db-pass_productive-T_clone-pass_germ-pass.tsv based on clone_id and germline_alignment_d_mask columns
+# script to parse the output of clean/filtered output of changeO /input of igphyml
+# to generate a fasta alignment file 
 # usage:
 ## python getIgphymlMSAclone.py [clone_id] [xxx_db-pass_productive-T_clone-pass_germ-pass.tsv] [output MFA file] -verbose
 
