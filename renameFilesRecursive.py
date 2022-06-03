@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Jun-Hoe, Lee (2021)
 # script to rename all files recursively in a folder based on input list
-# input: i.tsv of old names and new names
+# input: i.tsv of new (QBIC) and old names (e.g. DKFZ names)
 # ii. location to start renaming
 # usage:
 # python renameFilesRecursive.py [list_filenNames] [full_path to directory] -verbose
