@@ -16,3 +16,10 @@ Personal collection of small tools to manipulate sequence files
 ## C. Utility scripts of IgPhyML (B cell phylogenetic inference package)
 1. getIgphymlMSAclone.py: Parse the input file for `igPhyML`, typically named xxx_db-pass_productive-T_clone-pass_germ-pass.tsv to create a standard MSA file in fasta format.
 2. *readIgphymlOutPhylo.R* : Rscript template to read in output from `igPhyML`, typically xxx_igphyml-pass.tab, to generate trees in newick format.
+
+## D. niche utility scripts
+1. *bedstat.py*: Customise and view statistical properties of a bedfile. Written in python2.
+2. *parseEnsemblGeneNamesDesc.py*: parse the downloaded Ensembl biomart file to create a clean output. Combines multiple phenotypes from the same geneID into one entry. Written in python2.
+3. *parseProteinFunction_csv.py*: Parse protein sequences downloaded from Ensembl and output the proteinID and function in two columns. Written in python2
+4. 
+
