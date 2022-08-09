@@ -72,7 +72,7 @@ for dirs in dir_list:
         verboseprint(" dir with QbiC barcode in qbicRename_dict ", dirs)
         # get full path of directory
         dir_fullpath = os.path.join(os.path.abspath(args.dirPath), dirs)
-        sample_name = qbicRename_dict.get()
+        sample_name = qbicRename_dict.get(dirs)
         verboseprint(" sample name: ", sample_name) 
         # walk directory and get the names of files inside
         for files in os.listdir(dir_fullpath):
