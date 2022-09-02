@@ -67,14 +67,15 @@ except:
 
 
 for files in file_list:
-    if files in qbicRename_dict.keys(): # directory matching QBiC barcode
-        sample_name = qbicRename_dict.get(files)
-        verboseprint(" sample name: ", sample_name) 
-        if files.find(sample_name) >= 0: # find substring of sample_name in file name, if not found it will be -1
-            verboseprint("found filename matching sample name", files)
+    for old_name_key in qbicRename_dict.keys():
+        if files.find(old_name_key) >= 0: # find substring of old_name_key in file name, if not found it will be -1
+            verboseprint("found filename matching sample name", [files, old_name_key])
             # get full path of file, then rename
             oldFilePath = os.path.join(os.path.abspath(args.dirPath), files)
-            newFileName = files.replace(sample_name, files)
-            verboseprint( " newFileName ", newFileName)
+            sample_name = qbicRename_dict.get(old_name_key)
+            verboseprint(" sample_name", sample_name)
+            newFileName = files.replace(files, sample_name)
+            verboseprint(" newFileName ", newFileName)
             newFilePath = os.path.join(os.path.abspath(args.dirPath), newFileName)
             os.rename(oldFilePath, newFilePath)
+        
