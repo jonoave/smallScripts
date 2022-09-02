@@ -52,7 +52,7 @@ qbicRename_dict = {}
 for line in readInputFileNames:
     line = line.strip() # remove \n
     splitLine = line.split("\t")
-    qbicRename_dict[splitLine[0]] = splitLine[1]
+    qbicRename_dict[splitLine[1]] = splitLine[0]
 
 verboseprint("qbicRename_dict ", list(qbicRename_dict.items())[:5])
 
@@ -67,14 +67,15 @@ except:
 
 
 for files in file_list:
-    for old_name_key in qbicRename_dict.keys():
+    for old_name_key in qbicRename_dict.values():
         if files.find(old_name_key) >= 0: # find substring of old_name_key in file name, if not found it will be -1
             verboseprint("found filename matching sample name", [files, old_name_key])
             # get full path of file, then rename
             oldFilePath = os.path.join(os.path.abspath(args.dirPath), files)
             sample_name = qbicRename_dict.get(old_name_key)
             verboseprint(" sample_name", sample_name)
-            newFileName = files.replace(files, sample_name)
+            # replace only the string of old_name_key in files with sample_name
+            newFileName = files.replace(old_name_key, sample_name)
             verboseprint(" newFileName ", newFileName)
             newFilePath = os.path.join(os.path.abspath(args.dirPath), newFileName)
             os.rename(oldFilePath, newFilePath)
