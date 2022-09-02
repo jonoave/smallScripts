@@ -67,7 +67,7 @@ except:
 
 
 for files in file_list:
-    for old_name_key in qbicRename_dict.values():
+    for old_name_key in qbicRename_dict.keys():
         if files.find(old_name_key) >= 0: # find substring of old_name_key in file name, if not found it will be -1
             verboseprint("found filename matching sample name", [files, old_name_key])
             # get full path of file, then rename
