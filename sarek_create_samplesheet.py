@@ -98,7 +98,7 @@ def parse_read_lane_files(list_of_files):
             lane_r1_r2_list.append(list_lane_r1_r2)
     # if there are no lanes (no L00x), then just tag R1, R2 samples in one line
     else:
-        sample_ID_loc = list_of_files[0][:9]
+        sample_ID_loc = list_of_files[0][:10]
         list_lane_r1_r2 = tag_r1_r2(sample_ID_loc, "R1", "R2", "L001", list_of_files)
         lane_r1_r2_list.append(list_lane_r1_r2)
     
