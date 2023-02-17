@@ -4,10 +4,10 @@
 # modified from script_sarek_samplesheet.py - now to reannotate VCF files from IMGAG
 # input: i. list (tsv) of QBIC_barcode, sample_grouping (Fxxxxx), and sample_type
 # ii. path to directories (QBIC_barcodes) containing the VCF files
-# iii. tumour type (t)
+# iii. output sample sheet name 
 # output: sample sheet file (csv) with 3 columns: patient,sample,vcf(file location)
 # usage: 
-# python sarek_create_samplesheet.py [sample_info_list] [path to directory] [full path to samples] [out_samplesheet] -verbose
+# python sarek_create_samplesheet.py [sample_info_list] [full path to samples] [out_samplesheet] -verbose
 
 
 import io
@@ -41,7 +41,7 @@ parser.add_argument('input_sample_metadata', action="store", type=argparse.FileT
 # parser.add_argument('tumour_type', action="store",
 #                      help="primary tumor 'pt' or metastasis 'ms' ")                     
 parser.add_argument('path_abs_to_seq', action='store',
-                     help="absolute path to main directory that contains dirs of seqs")
+                     help="absolute path to main directory that contains dirs of VCF files")
 parser.add_argument('output_samplesheet', action='store',
                      help="output samplesheet file name")
 parser.add_argument('-verbose', action='store_true', default=False,
