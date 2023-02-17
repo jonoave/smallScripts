@@ -20,6 +20,7 @@ import configparser
 import pandas as pd
 import re
 import mmap
+import gzip
 
 
 from io import StringIO
@@ -59,11 +60,11 @@ else:
 #########################################################
 # function to create a copy of VCF files, replacing 'CSQ' with 'CSQ_IMGAG' 
 def modify_CSQ_in_VCF(old_filename, new_filename, old_string, new_string):
-    with open(old_filename) as f:
-        newText=f.read().replace(old_string, new_string)
+    with gzip.open(old_filename,"rt") as rf:
+        newText=rf.read().replace(old_string, new_string)
 
-    with open(new_filename, "w") as f:
-        f.write(new_filename)
+    with gzip.open(new_filename, "wt") as wf:
+        wf.write(newText)
 
 
 # function to name and rename old/new VCF files
@@ -80,13 +81,15 @@ def generate_old_new_VCF_filename(dir_path, qbic_sample_barcode, vc_sample):
 
 # function to check whether VCF file headers match
 def check_VCF_filenames_in_headers(input_VCF_file, VCF_filename):
-    with open(input_VCF_file) as f:
-        s = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-        if s.find(VCF_filename) != -1:
+    with gzip.open(input_VCF_file, "rb", 0) as f:
+        datafile = f.read()             
+        if str.encode(VCF_filename) in datafile:
+            verboseprint("found VCF_filename ", VCF_filename)
             return True
         else:
+            verboseprint("couldn't find VCF_filename ", VCF_filename)
             return False
-
+           
 
 def write_full_line(mod_VCF_dict):
     # from patient_modVCF_dict, retrieve all necessary info to generate a tabbed line.
@@ -98,11 +101,11 @@ def write_full_line(mod_VCF_dict):
     for patient_num, patient_vcfs in mod_VCF_dict.items():
         for each_vcf in patient_vcfs:
         # unpack the blood, tumour, (and) metastasis samples
-        VCF_filename = os.path.basename(each_vcf)
-        VCF_sample_name = VCF_filename.removesuffix("_var_annotated_updated_To_CSQ_IMGAG.vcf.gz")
-        output_single_list= [patient_num, VCF_sample_name, each_vcf]
-        single_line = "\t".join(write_line) 
-       output_line_list.append(single_line)
+            VCF_filename = os.path.basename(each_vcf)
+            VCF_sample_name = VCF_filename.removesuffix("_var_annotated_updated_To_CSQ_IMGAG.vcf.gz")
+            output_single_list = [patient_num, VCF_sample_name, each_vcf]
+            single_line = "\t".join(output_single_list) 
+            output_line_list.append(single_line)
         
     verboseprint("output_line_list", output_line_list[:1])
     
@@ -126,14 +129,14 @@ for line in readInputFileNames:
     line = line.strip() # remove \n
     splitLine = line.split("\t")
     sample_ID, sample_patient, sample_patient_analyte, sample_condition = splitLine
-    if sample_status == "blood":
+    if sample_condition == "blood":
         sample_status_label = "bl"
     else:
         sample_status_label = "tu"
     
     sample_patient_status = sample_status_label + "," + sample_ID + "," + sample_patient_analyte
     if sample_patient not in sample_metadata_dict:
-        sample_metadata_dict[sample_patient] = sample_patient_status
+        sample_metadata_dict[sample_patient] = [sample_patient_status]
     else:
         sample_metadata_dict[sample_patient].append(sample_patient_status)
 
@@ -162,25 +165,26 @@ patient_modVCF_dict = OrderedDict()
 for patient_num, patient_metadata in sample_metadata_dict.items():
     # sort the nested lists by status, i.e. "bl" should be first
     sorted_sample_list = sorted(patient_metadata, key=lambda x: x[0])
+    verboseprint("sorted_sample_list ", sorted_sample_list)
     # deal with with blood sample first, label each item there
-    status_blood, qbic_barcode_blood, vc_sample_blood = sorted_sample_list.split(",")[0]  
+    status_blood, qbic_barcode_blood, vc_sample_blood = sorted_sample_list[0].split(",")
     old_vcf_file_blood, new_vcf_file_blood = generate_old_new_VCF_filename(args.path_abs_to_seq, qbic_barcode_blood, vc_sample_blood)
+    verboseprint("old_vcf_file_blood ", old_vcf_file_blood)
+    verboseprint("new_vcf_file_blood ", new_vcf_file_blood)
 
-    if old_vcf_file_blood.is_file() and check_VCF_filenames_in_headers(old_vcf_file_blood, vc_sample_blood):
+    if os.path.exists(old_vcf_file_blood) and check_VCF_filenames_in_headers(old_vcf_file_blood, vc_sample_blood):
         # check that the VCF file names, Fxxxx-Fxxx is in the VCF file:
-        
-
-        modify_CSQ_in_VCF(old_vcf_file_blood, new_vcf_file_blood, "IMGAG", "CSQ_IMGAG")
-        patient_modVCF_dict[patient_num]: new_vcf_file_blood
+        modify_CSQ_in_VCF(old_vcf_file_blood, new_vcf_file_blood, "CSQ", "CSQ_IMGAG")
+        patient_modVCF_dict[patient_num] = [new_vcf_file_blood]
     
     # now modify the primary tumour, and (if exist) metastasis samples
-    for each_sample in sorted_sample_list[1]: # skip blood sample
+    for each_sample in sorted_sample_list[1:]: # skip blood sample
         status, qbic_barcode, vc_sample = each_sample.split(",")
         qbic_barcode_tumour = qbic_barcode + "_" + qbic_barcode_blood
         vc_sample_tumour = vc_sample + "-" + vc_sample_blood
         old_vcf_file, new_vcf_file = generate_old_new_VCF_filename(args.path_abs_to_seq, qbic_barcode_tumour, vc_sample_tumour)
-        if old_vcf_file.is_file() and check_VCF_filenames_in_headers(old_vcf_file, vc_sample_tumour) :
-            modify_CSQ_in_VCF(old_vcf_file, new_vcf_file, "IMGAG", "CSQ_IMGAG")
+        if os.path.exists(old_vcf_file) and check_VCF_filenames_in_headers(old_vcf_file, vc_sample_tumour) :
+            modify_CSQ_in_VCF(old_vcf_file, new_vcf_file, "CSQ", "CSQ_IMGAG")
             patient_modVCF_dict[patient_num].append(new_vcf_file)
 
 verboseprint("patient_modVCF_dict ", list(patient_modVCF_dict.items())[:3])
