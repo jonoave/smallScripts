@@ -99,11 +99,14 @@ def write_full_line(mod_VCF_dict):
     output_line_list = []
      
     for patient_num, patient_vcfs in mod_VCF_dict.items():
-        for each_vcf in patient_vcfs:
+        for vcfs in patient_vcfs:
         # unpack the blood, tumour, (and) metastasis samples
+            # split the qbic barcode and vcf file path
+            qbicBarcode, each_vcf = vcfs.split(",")
             VCF_filename = os.path.basename(each_vcf)
             VCF_sample_name = VCF_filename.removesuffix("_var_annotated_updated_To_CSQ_IMGAG.vcf.gz")
-            output_single_list = [patient_num, VCF_sample_name, each_vcf]
+            qbic_VCF_name = qbicBarcode + "_" + VCF_sample_name
+            output_single_list = [patient_num, qbic_VCF_name, each_vcf]
             single_line = "\t".join(output_single_list) 
             output_line_list.append(single_line)
         
@@ -153,13 +156,7 @@ except:
     print("Incorrect directory path provided. ")
     sys.exit()
 
-# check-match my own generated file_names with existing files, before modify vcf file
-# each samples are named with the convention, e.g.:
-## QHPRG586AJ (blood)
-## QHPRG587AR_QHPRG586AJ (primary tumour vs blood)
-## Qxxxx_QHPRG586AJ (metastasis vs blood)
-
-# new dict to store patient_num: modified_vcf_files
+# new dict to store patient_num: [qbic_barcode, modified_vcf_files]
 patient_modVCF_dict = OrderedDict()
 
 for patient_num, patient_metadata in sample_metadata_dict.items():
@@ -175,7 +172,8 @@ for patient_num, patient_metadata in sample_metadata_dict.items():
     if os.path.exists(old_vcf_file_blood) and check_VCF_filenames_in_headers(old_vcf_file_blood, vc_sample_blood):
         # check that the VCF file names, Fxxxx-Fxxx is in the VCF file:
         modify_CSQ_in_VCF(old_vcf_file_blood, new_vcf_file_blood, "CSQ", "CSQ_IMGAG")
-        patient_modVCF_dict[patient_num] = [new_vcf_file_blood]
+        qbicBarcode_new_vcf_file_blood = qbic_barcode_blood + "," + new_vcf_file_blood
+        patient_modVCF_dict[patient_num] = [qbicBarcode_new_vcf_file_blood]
     
     # now modify the primary tumour, and (if exist) metastasis samples
     for each_sample in sorted_sample_list[1:]: # skip blood sample
@@ -183,11 +181,13 @@ for patient_num, patient_metadata in sample_metadata_dict.items():
         qbic_barcode_tumour = qbic_barcode + "_" + qbic_barcode_blood
         vc_sample_tumour = vc_sample + "-" + vc_sample_blood
         old_vcf_file, new_vcf_file = generate_old_new_VCF_filename(args.path_abs_to_seq, qbic_barcode_tumour, vc_sample_tumour)
-        if os.path.exists(old_vcf_file) and check_VCF_filenames_in_headers(old_vcf_file, vc_sample_tumour) :
+        if os.path.exists(old_vcf_file) and check_VCF_filenames_in_headers(old_vcf_file, vc_sample_tumour):
             modify_CSQ_in_VCF(old_vcf_file, new_vcf_file, "CSQ", "CSQ_IMGAG")
-            patient_modVCF_dict[patient_num].append(new_vcf_file)
+            qbicBarcode_new_vcf_file_tumour = qbic_barcode + "," + new_vcf_file
+            patient_modVCF_dict[patient_num].append(qbicBarcode_new_vcf_file_tumour)
 
 verboseprint("patient_modVCF_dict ", list(patient_modVCF_dict.items())[:3])
+# e.g. {3: [QHPRG586AJ, FO13399x01_01_vcf_annotate..." , "QHPRG5867J, FO13399x02_01_vcf_annotate...]...}
 
 
 # C. create samplesheet, in tabbed lines
@@ -198,7 +198,6 @@ verboseprint("patient_modVCF_dict ", list(patient_modVCF_dict.items())[:3])
 # 3 FO13399x02_01   yy 
 
 write_lines_list = write_full_line(patient_modVCF_dict)
-
 
 # D. import write_lines_list into pandas,export as csv
 header_names = ["patient","sample","vcf"]
