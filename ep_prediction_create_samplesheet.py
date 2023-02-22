@@ -44,8 +44,8 @@ parser.add_argument('path_abs_to_annotated_vcf', action='store',
                      help="absolute path to main directory that contains dirs of annotated VCFS from sarek pipeline")
 parser.add_argument('output_samplesheet', action='store',
                      help="output samplesheet file name")
-parser.add_argument('-vcf_mod_suffix', action='store_true', default="_var_annotated.vcf.gz",
-                     help:"suffix for VCF files, if reannotated or named differently from default output of VEP files from sarek")
+parser.add_argument('-vcf_mod_suffix', action='store', default="_var_annotated_VEP.ann.vcf.gz",
+                     help="suffix for VCF files, if reannotated or named differently from default output of VEP files from sarek")
 parser.add_argument('-verbose', action='store_true', default=False,
                     help="turns on verbose mode. Usage: -verbose")  # verbose flag
 
@@ -61,7 +61,7 @@ else:
 #########################################################
 
 # function to get name of old allele file and generate new names.
-def generate_old_new_allele_filenames(dir_path_alleles, qbic_barcode)
+def generate_old_new_allele_filenames(dir_path_alleles, qbic_barcode):
     fullpath_alleles = os.path.join(dir_path_alleles, qbic_barcode )
     old_allele_file_name = qbic_barcode + "_result.tsv"
     path_old_allele_file_name  = os.path.join(fullpath_alleles, old_allele_file_name)
@@ -99,7 +99,7 @@ def write_full_line(mod_VCF_dict):
     for qbicBarcode, vcf_metadata in mod_VCF_dict.items():
         vcf_files, allele_barcode = vcf_metadata
         # generate vcf_file names, check whether exists:
-        vcf_file_dir = qbic_barcode + "_" + vcf_files
+        vcf_file_dir = qbicBarcode + "_" + vcf_files
         vcf_file_name = vcf_files + args.vcf_mod_suffix
         full_vcf_file_path = os.path.join(args.path_abs_to_annotated_vcf, vcf_file_dir,vcf_file_name)
         verboseprint("full_vcf_file_path (annotated) ", full_vcf_file_path)
@@ -110,7 +110,7 @@ def write_full_line(mod_VCF_dict):
         allele_file_name = allele_barcode + "_result.txt"
         full_allele_file_path = os.path.join(args.path_abs_to_alleles, allele_barcode, allele_file_name)
         verboseprint("full_allele_file_path " , full_allele_file_path)
-        if not os.path.exist(full_allele_file_path):
+        if not os.path.exists(full_allele_file_path):
             print("%s not found in modified alleles " %full_allele_file_path)
             break
         # add information to line list
@@ -162,7 +162,7 @@ tumour_qbic_vcf_dict = OrderedDict()
 for patient, patient_metadata in sample_metadata_dict.items():
     ## sort the nested lists by status, i.e. "bl" should be first
     sorted_sample_list = sorted(patient_metadata, key=lambda x: x[0])
-    qbic_barcode_blood, status_blood, vc_sample_blood = sorted_sample_list[0].split(",")
+    status_blood, qbic_barcode_blood, vc_sample_blood = sorted_sample_list[0].split(",")
     ## now get info from "tu" samples
     for each_sample in sorted_sample_list[1:]: # skip blood sample
         status_tumour, qbic_barcode, vc_sample = each_sample.split(",")
@@ -171,7 +171,7 @@ for patient, patient_metadata in sample_metadata_dict.items():
         tumour_qbic_vcf_dict[qbic_barcode] = [vc_sample_tumour, qbic_barcode_blood]
         
 
-verboseprint("tumour_qbic_vcf_dict ", list(tumour_qbic_vcf_dict.items())[:3])
+verboseprint("tumour_qbic_vcf_dict ", list(tumour_qbic_vcf_dict.items())[:5])
 ## e.g. {QHPRG587AJ: [FO13399x02_01_FO13399x01_01, QHPRG586AI ], ...}
 
 
@@ -179,7 +179,8 @@ verboseprint("tumour_qbic_vcf_dict ", list(tumour_qbic_vcf_dict.items())[:3])
 ## create a copy and modify so all alleles are listed in one line, separated by colon
 try:
     alleles_dir_list = os.listdir(args.path_abs_to_alleles)
-    verboseprint("dir_list ", alleles_dir_list)
+    # 
+    verboseprint("alleles_dir_list ", alleles_dir_list)
 except:
     print("Incorrect path to directory of alleles (output of hlatyping pipeline) provided. ")
     sys.exit()
@@ -199,8 +200,8 @@ for allele_dir in alleles_dir_list: # allele_dir is QBIC_barcode
 # 3 QHPRG5867J_FO13399x02_01    I   ..
 
 try:
-    vcf_dir_list = os.listdir(path_abs_to_annotated_vcf)
-    verboseprint("dir_list ", vcf_dir_list)
+    vcf_dir_list = os.listdir(args.path_abs_to_annotated_vcf)
+    verboseprint("vcf_dir_list ", vcf_dir_list)
 except:
     print("Incorrect path to directory of annotated vcfs (output of sarek pipeline) provided. ")
     sys.exit()
