@@ -65,13 +65,37 @@ else:
     verboseprint = lambda *a: None  # do-nothing function
 
 #########################################################
-# function to update counter (value) of a key in dict
+# function to check number of columns in current sample vs merged_df
+def check_cols_sample_vs_merge_df(sample_df_cols_set, merged_df_cols_set, sample_df, merged_df):
+    overlap_set = sample_df_cols_set.intersection(merged_df_cols_set)
+                
+    if sample_df_cols_set != overlap_set:
+        mod_sample_df = drop_nonOverlap_cols(overlap_set, sample_df_cols_set, sample_df)
+    if merged_df_cols_set != overlap_set:
+        mod_merged_df = drop_nonOverlap_cols(overlap_set, merged_df_cols_set, merged_df) 
+    else:
+        mod_sample_df = sample_df
+        mod_merged_df = merged_df.copy()
+                
+    return mod_sample_df, mod_merged_df\
+    
+# function to drop excess columns in current sample or merged_df
+def drop_nonOverlap_cols(overlap_set, sample_compare_set, sample_compare_df):
+    complement_set = sample_compare_set.difference(overlap_set)
+    verboseprint(" col names in sample_compare_df before dropping columns" , sample_compare_df.columns.tolist()[-7:])
+    mod_sample_compare_df = sample_compare_df[sample_compare_df.columns.difference(list(complement_set), sort = False)]
+    verboseprint(" col names in sample_copare_df after dropping columns ", mod_sample_compare_df.columns.tolist()[-7:])
+
+    return mod_sample_compare_df
+
+# function to update counter (value) of an epitope in WB or SB dict (of current sample)
 def update_dict_counter(counter_dict, counter_dict_key):
     if counter_dict_key in counter_dict:
         counter_dict[counter_dict_key] += 1
     else:
         counter_dict[counter_dict_key] = 1
 
+# function to update HLA binding across all same samples 
 def update_global_hla_counter(counter_dict, counter_dict_key, binding_str, binding_num):
     verboseprint(" counter_dict_key, binding ",  [counter_dict_key, binding_str])
     verboseprint(" counter_dict before updating",  list(counter_dict.items()))
@@ -90,6 +114,19 @@ def update_global_hla_counter(counter_dict, counter_dict_key, binding_str, bindi
     # update dictionary with binding_counter value
     # updated_dict = {counter_dict_key: binding_counter_list}
     # counter_dict.update(updated_dict)
+
+# function to create df from dict of primarytumour and metastasis HLA binding affinities and write them out
+def create_df_from_dict_and_write_out(input_dict, output_file):
+    hla_df = pd.DataFrame.from_dict(input_dict, orient="index",columns = ["SB", "WB"])
+    # convert rows (index) to column "HLA", sort HLA before writing
+    hla_df.reset_index(inplace=True)
+    hla_df = hla_df.rename(columns = {'index' : "HLA"})
+    hla_df = hla_df.sort_values(["HLA"])
+    verboseprint('hla_df ' ,  hla_df.head())
+
+    fullpath_outfile_hla_df = os.path.join(args.path_abs_to_seq, output_file)
+    hla_df.to_csv(fullpath_outfile_hla_df, sep="\t", index=False)
+
 
 #########################################################
 # A. read in input_sample_metadata, store as dictionary
@@ -202,7 +239,6 @@ for dirs in dir_list:
 
     # drop rows where columns 'chr' or 'pos' are blank
     ep_pred_df = ep_pred_df.dropna(subset = ['chr', 'pos'])  
-    
     # sort by columns "QBIC_barcode", then "chr", "length"  
     ep_pred_df  = ep_pred_df.sort_values(["QBIC_barcode", "chr", "length"])
     verboseprint("dimension of ep_pred_df to be written ", ep_pred_df.shape)
@@ -213,7 +249,7 @@ for dirs in dir_list:
      
     # compile WB and SB epitopes
     ## get columns of "HLAxx:xx rank"
-    ## retrieve regex of "HLAxx:xx", then add HLA count in one of the 4 dicts
+    ## retrieve regex of "HLAxx:xx", then add HLA count in either WB or SB lists
     ep_binding_df = ep_pred_df.filter(regex="HLA-[ABC]\*\d{1,3}:\d{1,4} rank")
     # convert ep_binding_df to list of dictionaries (HLAs)
     hlaCols_dicts_dict = ep_binding_df.to_dict(orient="list", into=OrderedDict)
@@ -246,7 +282,7 @@ for dirs in dir_list:
         verboseprint("WB list " , WB)
         verboseprint("ep_bind_hlas_dict ", list(ep_binding_hlas_dict.items()))
     
-    # write out SB_list and WB_list into an output table:
+    # write out SB and WB lists into an output table (on a per sample basis):
     ## columns: QBIC_barcode | patient | condition | sequence | gene | SB | WB
     binding_df = df2 = ep_pred_df.loc[:, ["QBIC_barcode","patient","condition","sequence", "gene", ]]
     binding_df["SB"] = SB # add columns
@@ -271,22 +307,9 @@ for dirs in dir_list:
             cols_merged_ep_pred_df_set = set(merged_ep_pred_df.columns.tolist())
             verboseprint("Dimensions of merged_ep_pred_df, ", merged_ep_pred_df.shape)
             overlap_colNames_set = cols_ep_pred_df_set.intersection(cols_merged_ep_pred_df_set)
-            # make sure both current merged_ep_pred_df and the new ep_pred_df have the same columns as the overlap
-            # remove extra columns that are not found in overlap
-            if cols_ep_pred_df_set != overlap_colNames_set: # more columns in ep_pred_df
-                complement_ep_pred_df_set = cols_ep_pred_df_set.difference(overlap_colNames_set)
-                verboseprint(" colNames ep_pred_df before dropping columns ", ep_pred_df.columns.tolist()[-7:])
-                mod_ep_pred_df = ep_pred_df[ep_pred_df.columns.difference(list(complement_ep_pred_df_set), sort = False)]
-                verboseprint(" colNames mod_ep_pred_df after dropping columns ", mod_ep_pred_df.columns.tolist()[-7:])
-            if cols_merged_ep_pred_df_set != overlap_colNames_set: # more columns in merged_ep_pred_df
-                complement_merged_ep_pred_df_set = cols_merged_ep_pred_df_set.difference(overlap_colNames_set)
-                verboseprint(" colNames merged_ep_pred_df before dropping columns ", merged_ep_pred_df.columns.tolist()[-7:])
-                mod_merged_ep_pred_df = merged_ep_pred_df[merged_ep_pred_df.columns.difference(list(complement_merged_ep_pred_df_set), sort = False)]
-                verboseprint(" colNames mod_merged_ep_pred_df after dropping columns ", mod_merged_ep_pred_df.columns.tolist()[-7:])
-            else:
-                # the columns in overlap_colNames_set are the same with merged_ep_pred_df and ep_pred_df
-                mod_merged_ep_pred_df = merged_ep_pred_df.copy()
-                mod_ep_pred_df = ep_pred_df
+            # check for overlapping columns and drop them  
+            mod_ep_pred_df, mod_merged_ep_pred_df = check_cols_sample_vs_merge_df(cols_ep_pred_df_set, cols_merged_ep_pred_df_set,
+                                                                                  ep_pred_df, merged_ep_pred_df)
             
             # append mod_ep_pred_df to mod_merged_ep_pred_df
             # just to be safe, make sure the order of columns in ep_pred_df = merged_ep_df           
@@ -314,7 +337,6 @@ for dirs in dir_list:
                 update_global_hla_counter(hla_dist_bind_primaryTumor_dict, hla_coord, bind_strength, bind_counts)
  
 
-
 # write out merged_table and HLA_distribution_table across samples
 if args.mergeTables:
     # A. write out mergedTables
@@ -326,34 +348,14 @@ if args.mergeTables:
     merged_ep_pred_df.to_csv(fullpath_outfile_merged_ep_pred_df, sep="\t", index=False)
 
     # B. write out HLA_distribution table
-    verboseprint("hla_dist_bind_metastasis_dict ", hla_dist_bind_metastasis_dict.items())
-    verboseprint("hla_dist_bind_primaryTumor_dict ", hla_dist_bind_primaryTumor_dict.items())
-
     # create DFs from dicts, sort by HLA before writing out
-    verboseprint("hla_dist_bind_metastasis_dict, ",  list(hla_dist_bind_metastasis_dict.items()))
-    hla_dist_metastasis_df = pd.DataFrame.from_dict(hla_dist_bind_metastasis_dict, orient="index",
-                                                   columns = ["SB", "WB"])
-    # convert rows (index) to column "HLA", sort HLA before writing
-    hla_dist_metastasis_df.reset_index(inplace=True)
-    hla_dist_metastasis_df = hla_dist_metastasis_df.rename(columns = {'index' : "HLA"})
-    hla_dist_metastasis_df = hla_dist_metastasis_df .sort_values(["HLA"])
-    verboseprint('hla_dist_metastasis_df' ,  hla_dist_metastasis_df.head())
 
-    fullpath_outfile_hla_dist_metastasis_df  = os.path.join(args.path_abs_to_seq, "metastasis_SB_WB.tsv")
-    hla_dist_metastasis_df.to_csv(fullpath_outfile_hla_dist_metastasis_df, sep="\t", index=False)
+    verboseprint("hla_dist_bind_metastasis_dict, ",  list(hla_dist_bind_metastasis_dict.items()))
+    create_df_from_dict_and_write_out(hla_dist_bind_metastasis_dict, "metastasis_SB_WB.tsv")
 
     # repeat for primaryTumour
-    hla_dist_primaryTumour_df = pd.DataFrame.from_dict(hla_dist_bind_primaryTumor_dict, orient="index",
-                                                 columns = ["SB", "WB"])
-    hla_dist_primaryTumour_df.reset_index(inplace=True)
-    hla_dist_primaryTumour_df = hla_dist_primaryTumour_df.rename(columns = {'index' : "HLA"})
-    hla_dist_primaryTumour_df = hla_dist_primaryTumour_df .sort_values(["HLA"])
-    verboseprint('hla_dist_primaryTumour_df' ,  hla_dist_primaryTumour_df.head())
-
-    fullpath_outfile_hla_dist_primaryTumour_df = os.path.join(args.path_abs_to_seq, "primaryTumour_SB_WB.tsv")
-    hla_dist_primaryTumour_df.to_csv(fullpath_outfile_hla_dist_primaryTumour_df, sep="\t", index=False)
-
-
+    verboseprint("hla_dist_bind_primaryTumour_dict, ",  list(hla_dist_bind_primaryTumor_dict.items()))
+    create_df_from_dict_and_write_out(hla_dist_bind_primaryTumor_dict, "primaryTumour_SB_WB.tsv")
 
 
 
