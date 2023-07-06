@@ -258,6 +258,8 @@ for dirs in dir_list:
     # Create 2 lists, SB and WB with of length(dict)
     WB = [0] * len(ep_binding_df.index)
     SB = [0] * len(ep_binding_df.index)
+    # dictionary to store alleles: weak/strong across alleles
+    hla_alleles_bind_dict = OrderedDict()
 
     # set condition of patient
     if sample_status == "metastasis":
@@ -268,25 +270,33 @@ for dirs in dir_list:
     # Iterate over each dictionary (HLAs), add +1 based on position
     for hla_keys, hla_ranks in hlaCols_dicts_dict.items():
         hla  = hla_keys.split(" ")[0]
+        hla_list = ["nan"] * len(ep_binding_df.index) # to store W/S for each allele
         verboseprint("hla ", hla_keys)
         for count, eachRank in enumerate(hla_ranks):
             if eachRank <= 0.5:
                 SB[count] += 1
                 sb_key = condition + "_SB_" + hla
                 update_dict_counter(ep_binding_hlas_dict, sb_key)
+                hla_list[count] = "S"
             elif eachRank > 0.5 and eachRank <= 2.0:
                 WB[count] += 1
                 wb_key = condition + "_WB_" + hla
                 update_dict_counter(ep_binding_hlas_dict, wb_key)
+                hla_list[count] = "W"
         verboseprint("SB list " , SB)
         verboseprint("WB list " , WB)
         verboseprint("ep_bind_hlas_dict ", list(ep_binding_hlas_dict.items()))
+        hla_alleles_bind_dict[hla] = hla_list
+        verboseprint("hla_alleles_bind_dict", list(hla_alleles_bind_dict.items()))
     
     # write out SB and WB lists into an output table (on a per sample basis):
     ## columns: QBIC_barcode | patient | condition | sequence | gene | SB | WB
-    binding_df = df2 = ep_pred_df.loc[:, ["QBIC_barcode","patient","condition","sequence", "gene", ]]
+    binding_df = ep_pred_df.loc[:, ["QBIC_barcode","patient","condition","sequence", "gene", ]]
     binding_df["SB"] = SB # add columns
-    binding_df["WB"] = WB  
+    binding_df["WB"] = WB
+    # create additional columns of the 6 alleles in hla_alleles_bind_dict
+    for hlas, anybindings in hla_alleles_bind_dict.items():
+        binding_df[hlas] = anybindings
 
     outfile_ep_binding_df = qbic_barcode +  "_binding_rank_" + args.suffix + ".tsv"
     fullpath_outfile_ep_binding_df  = os.path.join(args.path_abs_to_seq, dirs, outfile_ep_binding_df)
