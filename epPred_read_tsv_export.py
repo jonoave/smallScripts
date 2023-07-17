@@ -77,7 +77,7 @@ def check_cols_sample_vs_merge_df(sample_df_cols_set, merged_df_cols_set, sample
         mod_sample_df = sample_df
         mod_merged_df = merged_df.copy()
                 
-    return mod_sample_df, mod_merged_df\
+    return mod_sample_df, mod_merged_df
     
 # function to drop excess columns in current sample or merged_df
 def drop_nonOverlap_cols(overlap_set, sample_compare_set, sample_compare_df):
@@ -162,11 +162,6 @@ except:
     print("Incorrect directory path provided. ")
     sys.exit()
 
-# walk through each directory and get file names, store in sample_seqFiles_dict
-sample_seqFiles_dict = {}
-## e.g {"QHPRG00001: ["QHPRG0001_L00x_R1.fastq","QHPRG0001_L00x_R2.fastq"], 
-##  "QHPRG00002: ["QHPRG0002_L00x_R1.fastq","QHPRG0002_L00x_R2.fastq"...}
-
 colNames_list = [] # column names placeholder of current merged_pred_df
 
 # dictionaries to store binding strength of epitopes by HLA across samples
@@ -233,10 +228,6 @@ for dirs in dir_list:
         ep_pred_df = ep_pred_df.sort_values('length').drop_duplicates(['chr', 'pos','gene'], keep='last')
     verboseprint("Kept longest peptide per gene", ep_pred_df.head())
     
-    # write modifed df as <qbic_barcode>_modified_ts
-    ## replace  NAN values with empty strings
-    # ep_pred_df = ep_pred_df.fillna("")
-
     # drop rows where columns 'chr' or 'pos' are blank
     ep_pred_df = ep_pred_df.dropna(subset = ['chr', 'pos'])  
     # sort by columns "QBIC_barcode", then "chr", "length"  
@@ -270,7 +261,7 @@ for dirs in dir_list:
     # Iterate over each dictionary (HLAs), add +1 based on position
     for hla_keys, hla_ranks in hlaCols_dicts_dict.items():
         hla  = hla_keys.split(" ")[0]
-        hla_list = ["nan"] * len(ep_binding_df.index) # to store W/S for each allele
+        hla_list = ["NaN"] * len(ep_binding_df.index) # to store W/S for each allele
         verboseprint("hla ", hla_keys)
         for count, eachRank in enumerate(hla_ranks):
             if eachRank <= 0.5:
@@ -350,7 +341,7 @@ for dirs in dir_list:
 # write out merged_table and HLA_distribution_table across samples
 if args.mergeTables:
     # A. write out mergedTables
-    merged_ep_pred_df = merged_ep_pred_df.fillna("")
+    merged_ep_pred_df = merged_ep_pred_df.fillna("Nan")
     # sort by column "QBIC_barcode", then "chr", "length"
     merged_ep_pred_df  = merged_ep_pred_df.sort_values(["QBIC_barcode", "chr", "length"])
     verboseprint("dimension of merged_ep_pred_df (concat) to be written \n ", merged_ep_pred_df.shape)
