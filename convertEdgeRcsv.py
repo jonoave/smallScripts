@@ -29,9 +29,13 @@ parser.add_argument('input_counts_csv', nargs='+', action='store',
 parser.add_argument('-output_file', action="store", type=argparse.FileType('w'),
                     default='merged_gene_counts.tsv', help="output file name of tranposed/processed/merged mirna counts. \
                     Default. 'merged_gene_counts.tsv'.")
+parser.add_argument('-old_v1_pipeline', action='store_true', default=False,
+                    help="old pipeline version, which has mirna tags are now used in place of gene_names")  # verbose flag
 parser.add_argument('-verbose', action='store_true', default=False,
                     help="turns on verbose mode. Usage: -verbose")  # verbose flag
 
+
+old_v1_pipeline
 
 args = parser.parse_args()
 
@@ -118,10 +122,13 @@ genename_column = merged_df.pop('gene_name')
 merged_df.insert(1, 'gene_name', genename_column)
 verboseprint("merged_df, moved column genename  \n", merged_df.head())
 
-# now edit the values in columns 'Geneid' and 'gene_name'
-merged_df['Geneid'] =  merged_df['Geneid'].apply(lambda x: x.split("_")[0])
-merged_df['gene_name'] =  merged_df['gene_name'].apply(lambda x: x.split("_")[1])
-verboseprint("edited values in Geneid and genename  \n", merged_df.head())
+## the new pipeline v > 2.0 only shows the mirID, no mirTag. 
+## so we skip the following step. 
+##  now edit the values in columns 'Geneid' and 'gene_name'
+if args.old_v1_pipeline:
+    merged_df['Geneid'] =  merged_df['Geneid'].apply(lambda x: x.split("_")[0])
+    merged_df['gene_name'] =  merged_df['gene_name'].apply(lambda x: x.split("_")[1])
+    verboseprint("edited values in Geneid and genename  \n", merged_df.head())
 
 # write the output of the df 
 merged_df.to_csv(args.output_file, sep="\t", index=False )
