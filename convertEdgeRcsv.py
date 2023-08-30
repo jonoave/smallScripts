@@ -30,12 +30,9 @@ parser.add_argument('-output_file', action="store", type=argparse.FileType('w'),
                     default='merged_gene_counts.tsv', help="output file name of tranposed/processed/merged mirna counts. \
                     Default. 'merged_gene_counts.tsv'.")
 parser.add_argument('-old_v1_pipeline', action='store_true', default=False,
-                    help="old pipeline version, which has mirna tags are now used in place of gene_names")  # verbose flag
+                    help="old pipeline version, which has mirna tags are now used in place of gene_names")  
 parser.add_argument('-verbose', action='store_true', default=False,
                     help="turns on verbose mode. Usage: -verbose")  # verbose flag
-
-
-old_v1_pipeline
 
 args = parser.parse_args()
 
