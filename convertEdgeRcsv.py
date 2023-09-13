@@ -51,6 +51,9 @@ def transpose_df(input_df):
     # re-order columns alphabetically 
     transposed_df = transposed_df.reindex(sorted(transposed_df.columns), axis=1)
     verboseprint(transposed_df.head())
+    # show number of rows (mrnas)
+    verboseprint("number of row in transposed df: ", transposed_df.shape[0])
+
 
     return transposed_df
 
