@@ -2,10 +2,10 @@
 # Jun-Hoe, Lee (2023)
 # script to read in miRNA counts <hairpin/mature>_counts.csv file from nf-core/smrnaseq , 
 # where the rownames are the sample names. Transpose it and convert it to input for rnadeseq
-# input: <hairpin/mature>_counts.csv 
-# output: <..>_merged_binding_rank. tsv file (filtered dataframe with added metadata) 
+# input:  
+# output: merged_gene_counts.tsv  
 # usage: 
-# python epPred_read_tsv_export.py [input_metadata] [path to predictions folder] [filters] -verbose
+# python convertEdgeRcsv.py [<hairpin/mature>_counts.csv] [-options]
 
 import os
 import sys
@@ -22,8 +22,8 @@ class errorDisplayParser(argparse.ArgumentParser):
         self.print_help()   
         sys.exit(2)
 
-parser = errorDisplayParser(description='After running epPred_read_tsv_export.py to generate <..>_binding_rank.tsv \
-                            for each sample, now combine them into one merged table')
+parser = errorDisplayParser(description='Convert the output of nf-core/smrnaseq pipeline in edgeR, ie. the <hairpin,mature> \
+                            count.tsv files into a merged_gene_count.tsv file as input for rnadeseq')
 parser.add_argument('input_counts_csv', nargs='+', action='store',
                     help="<hairpin/mature>_counts.csv files, separated by space")
 parser.add_argument('-output_file', action="store", type=argparse.FileType('w'),
