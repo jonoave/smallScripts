@@ -209,7 +209,9 @@ for dirs in dir_list:
     verboseprint("added qbic barcode to ep_pred_df ", ep_pred_df.head())
 
     # drop columns CSQ_IMGAG to save space
-    ep_pred_df = ep_pred_df.drop(columns= ["CSQ_IMGAG"]) 
+    ## check if column exists, then drop 
+    if "CSQ_IMGAG" in ep_pred_df.columns:
+        ep_pred_df = ep_pred_df.drop(columns= ["CSQ_IMGAG"]) 
     
     # apply filterings
     if args.binder:
