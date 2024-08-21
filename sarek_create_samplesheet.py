@@ -30,7 +30,7 @@ class errorDisplayParser(argparse.ArgumentParser):
 
 parser = errorDisplayParser(description='Create samplesheet for nf-core sarek pipeline, specifically project QHPRG')
 parser.add_argument('input_sample_metadata', action="store", type=argparse.FileType('r'),
-                     help="tsv: QBIC_barcodes\'\t\'sample_grouping\'\t\'sample_type")
+                     help="tsv: QBIC_barcodes\'\t\'sample_grouping\'\t\'sample_type\'\t\'sex(optional)")
 parser.add_argument('path_abs_to_seq', action='store',
                      help="absolute path to main directory that contains dirs of seqs")
 parser.add_argument('output_samplesheet', action='store',
@@ -108,10 +108,10 @@ def parse_read_lane_files(list_of_files):
 def write_full_line(qbic_id_sample, metadata_dict, file_list):
     # from qbic_ID_sample, retrieve all necessary info to generate a tabbed line
     # in samplesheet in the order of "patient,status,sample,lane,fastq_1,fastq_2"
+    # update: in samplesheet in the order of "patient,sex,status,sample,lane,fastq_1,fastq_2"
 
     sample_info =  metadata_dict[qbic_id_sample]
-    patient_id = sample_info.split("_")[0]
-    sample_status = sample_info.split("_")[1]
+    patient_id, sample_sex, sample_status = sample_info.split("_")
     sample_id = qbic_id_sample
 
     # parse the list of files and group them by lane, R1/R2
@@ -122,7 +122,7 @@ def write_full_line(qbic_id_sample, metadata_dict, file_list):
 
     for each_lane in all_lane_r1_r2_files_list:
         lane, r1, r2 = each_lane
-        output_single_line = [patient_id, sample_status, sample_id, lane, r1, r2]
+        output_single_line = [patient_id, sample_sex, sample_status, sample_id, lane, r1, r2]
         single_line = "\t".join(output_single_line) 
         output_line_list.append(single_line)
 
@@ -143,27 +143,61 @@ def write_full_line(qbic_id_sample, metadata_dict, file_list):
 # QHPRG596AQ  10  blood
 
 # sample status: {"blood":"0", "primary tumor":"1", "metastasis":"1"} 
+# Update 19.08.2024: Optional 4th column; sex (eg XX, XY)
 
-readInputFileNames = args.input_sample_metadata.readlines()[1:] # skip header
-sample_metadata_dict = {}
-for line in readInputFileNames:
-    line = line.strip() # remove \n
-    splitLine = line.split("\t")
-    sample_ID, sample_patient, sample_status = splitLine
-    if sample_status == "blood":
-        sample_status_label = "0"
-    else:
-        sample_status_label = "1"
-    sample_patient_status = sample_patient + "_" + sample_status_label
-    sample_metadata_dict[sample_ID] = sample_patient_status
+# old code block
+# readInputFileNames = args.input_sample_metadata.readlines()[1:] # skip header
+# sample_metadata_dict = {}
+# for line in readInputFileNames:
+#     line = line.strip() # remove \n
+#     splitLine = line.split("\t")
+#     sample_ID, sample_patient, sample_status = splitLine
+#     if sample_status == "blood":
+#         sample_status_label = "0"
+#     else:
+#         sample_status_label = "1"
+#     sample_patient_status = sample_patient + "_" + sample_status_label
+#     sample_metadata_dict[sample_ID] = sample_patient_status
+
+#     splitLine[0] = sample_ID
+#     splitLine[1] = sample_patient
+#     splitLine[2] = sample_status
+#     if args.sex:
+#         splitLine[3] = sample_sex
+#         sample_patient_status = sample_patient + "_" + sample_status_label + "_" \
+#                                  + sample_sex
+
+# new code block
+# read in input_sample_metadata as df
+readInputSampleMetadata_df = pd.read_table(args.input_sample_metadata)
+# get column names as list
+colnames_list =  list(readInputSampleMetadata_df.columns.values)
+
+## if there is no sex column, then create a default XY
+if len(readInputSampleMetadata_df.columns) == 3:
+    readInputSampleMetadata_df["sex"] = "XY"
+## create new column "sample_status_label" based on 3rd column ("blood"/"tumor")
+readInputSampleMetadata_df["sample_status_label"] = ["0" if x == "blood" else "1" for x in readInputSampleMetadata_df[colnames_list[2]]]
+## now the df has 5 columns: QBIC barcode|patient_group|blood/tumor|sex|0/1
+## drop the blood/tumor column
+readInputSampleMetadata_df = readInputSampleMetadata_df.drop(columns=[colnames_list[2]])
+verboseprint("dropped column 2 (blood/tumor)", readInputSampleMetadata_df.head())
+
+# create the column "sample_patient_status" from columns 2,3,4
+readInputSampleMetadata_df["sample_patient_status"] = readInputSampleMetadata_df[readInputSampleMetadata_df.columns[1:4]].apply(lambda x: '_'.join(x.dropna().astype(str)),axis=1)
+verboseprint("added column sample_patient_status", readInputSampleMetadata_df.head())
+
+# now create a dictionary of key QBIC_barcode and value sample_patient_status
+sample_metadata_dict = dict(zip(readInputSampleMetadata_df[colnames_list[0]], readInputSampleMetadata_df["sample_patient_status"]))
 
 verboseprint("sample_metadata_dict ", list(sample_metadata_dict.items())[:3])
 ## e.g. {"QHPRG586AJ": "3_0", "QHPRG586AJ": "3_1"]...}
+## e.g. {"QHPRG586AJ": "3_0_XY", "QHPRG586AJ": "3_1_XY"]...}
 
 # B. walk through the directory of NGS to look for fastq files
 try:
     dir_list = os.listdir(args.path_abs_to_seq)
-    verboseprint("dir_list ", dir_list)
+    verboseprint("dir_list ", dir_list[:5])
 except:
     print("Incorrect directory path provided. ")
     sys.exit()
@@ -199,6 +233,7 @@ verboseprint("number of entries (samples) in sample_seqFiles_paired : ", len(sam
 # C. create sample sheet
 ## sample sheet is a csv file with the following columns:
 ## patient,status,sample,lane,fastq_1,fastq_2
+## updated: patient,sex,status,sample,lane,fastq_1,fastq_2
 
 ## first create write_lines_list (tabbed) that stores each line of the sample sheet
 ## second, import write_lines into a pandas dataframe. Then sort by patient, status, R1, lane etc
@@ -216,7 +251,7 @@ for qbic_id, qbic_files in sample_seqFiles_paired_dict.items():
 verboseprint("write_lines_list ", write_lines_list[:5])
 
 # D. import write_lines_list into pandas to sort by columns
-header_names = ["patient","status","sample","lane","fastq_1","fastq_2"]
+header_names = ["patient","sex", "status","sample","lane","fastq_1","fastq_2"]
 
 # samplesheet_df = pd.read_csv(StringIO(write_lines_list), sep='\t', header=header_names)
 samplesheet_df = pd.read_csv(io.StringIO('\n'.join(write_lines_list)), names = header_names, sep="\t")
